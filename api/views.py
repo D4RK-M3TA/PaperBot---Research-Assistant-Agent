@@ -1,7 +1,7 @@
 """
 API views for document processing, RAG Q/A, and chat.
 """
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, serializers
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -91,7 +91,12 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Set the user to the current user."""
         workspace_id = self.request.data.get('workspace_id')
-        workspace = Workspace.objects.get(id=workspace_id, owner=self.request.user)
+        if not workspace_id:
+            raise serializers.ValidationError({'workspace_id': 'This field is required.'})
+        try:
+            workspace = Workspace.objects.get(id=workspace_id, owner=self.request.user)
+        except Workspace.DoesNotExist:
+            raise serializers.ValidationError({'workspace_id': 'Workspace not found or access denied.'})
         serializer.save(user=self.request.user, workspace=workspace)
 
     @action(detail=True, methods=['post'])
@@ -113,13 +118,14 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
             content=message_text
         )
         
-        # Get conversation history
+        # Get conversation history (exclude the current user message we just created)
+        all_messages = list(session.messages.all().order_by('created_at'))
         history = [
             {
                 'content': msg.content,
                 'response': '' if msg.role == 'user' else msg.content
             }
-            for msg in session.messages.all().order_by('created_at')[:-1]  # Exclude current message
+            for msg in all_messages[:-1]  # Exclude current message
         ]
         
         # Perform RAG query
@@ -132,7 +138,7 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
             similar_chunks = embedding_service.search_similar_chunks(
                 query_embedding,
                 top_k=top_k,
-                workspace_id=workspace_id
+                workspace_id=session.workspace.id
             )
             
             chunks = [chunk for chunk, _ in similar_chunks]
