@@ -1,0 +1,355 @@
+openapi: 3.0.3
+info:
+  title: PaperBot API
+  description: Research Assistant Agent API for PDF ingestion, RAG Q/A, and summarization
+  version: 1.0.0
+servers:
+  - url: http://localhost:8000/api
+    description: Local development server
+
+paths:
+  /auth/token/:
+    post:
+      tags: [Authentication]
+      summary: Obtain JWT token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Token obtained
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access:
+                    type: string
+                  refresh:
+                    type: string
+
+  /auth/token/refresh/:
+    post:
+      tags: [Authentication]
+      summary: Refresh JWT token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh]
+              properties:
+                refresh:
+                  type: string
+      responses:
+        '200':
+          description: Token refreshed
+
+  /auth/users/register/:
+    post:
+      tags: [Authentication]
+      summary: Register new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, email, password, password_confirm]
+              properties:
+                username:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+                password_confirm:
+                  type: string
+      responses:
+        '201':
+          description: User created
+
+  /documents/upload/:
+    post:
+      tags: [Documents]
+      summary: Upload PDF document
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [workspace_id, file]
+              properties:
+                workspace_id:
+                  type: integer
+                file:
+                  type: string
+                  format: binary
+                title:
+                  type: string
+      responses:
+        '201':
+          description: Document uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+
+  /documents/:
+    get:
+      tags: [Documents]
+      summary: List documents
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of documents
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Document'
+
+  /query/:
+    post:
+      tags: [RAG]
+      summary: RAG-based Q/A
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [workspace_id, query]
+              properties:
+                workspace_id:
+                  type: integer
+                query:
+                  type: string
+                top_k:
+                  type: integer
+                  default: 5
+                  minimum: 1
+                  maximum: 20
+                include_citations:
+                  type: boolean
+                  default: true
+      responses:
+        '200':
+          description: Query response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  answer:
+                    type: string
+                  citations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Citation'
+                  retrieved_chunks:
+                    type: array
+                    items:
+                      type: integer
+        '404':
+          description: No relevant documents found
+
+  /summarize/:
+    post:
+      tags: [RAG]
+      summary: Multi-document summarization
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [workspace_id, document_ids]
+              properties:
+                workspace_id:
+                  type: integer
+                document_ids:
+                  type: array
+                  items:
+                    type: integer
+                  minItems: 1
+                summary_type:
+                  type: string
+                  enum: [short, detailed, related_work]
+                  default: short
+      responses:
+        '200':
+          description: Summary generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  summary:
+                    type: string
+                  related_work:
+                    type: string
+                  citations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Citation'
+                  document_ids:
+                    type: array
+                    items:
+                      type: integer
+
+  /chat/:
+    post:
+      tags: [Chat]
+      summary: Create chat session
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [workspace_id]
+              properties:
+                workspace_id:
+                  type: integer
+                title:
+                  type: string
+      responses:
+        '201':
+          description: Chat session created
+
+  /chat/{id}/message/:
+    post:
+      tags: [Chat]
+      summary: Send message in chat session
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message, workspace_id]
+              properties:
+                message:
+                  type: string
+                workspace_id:
+                  type: integer
+                top_k:
+                  type: integer
+                  default: 5
+      responses:
+        '200':
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message_id:
+                    type: integer
+                  answer:
+                    type: string
+                  citations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Citation'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Document:
+      type: object
+      properties:
+        id:
+          type: integer
+        workspace:
+          type: integer
+        title:
+          type: string
+        filename:
+          type: string
+        status:
+          type: string
+          enum: [uploaded, processing, extracted, chunked, embedded, indexed, failed]
+        page_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    Citation:
+      type: object
+      properties:
+        document_id:
+          type: integer
+        document_title:
+          type: string
+        chunk_id:
+          type: integer
+        page_number:
+          type: integer
+          nullable: true
+        snippet:
+          type: string
+        score:
+          type: number
+          format: float
+          nullable: true
+
+    Workspace:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        owner:
+          type: integer
+        is_active:
+          type: boolean
+
