@@ -5,8 +5,8 @@ import './App.css'
 
 const API_BASE = '/api'
 
-// Configure axios
-axios.defaults.baseURL = API_BASE
+// Configure axios - don't set baseURL since vite proxy handles routing
+// The proxy in vite.config.js forwards /api/* to http://localhost:8000/api/*
 axios.interceptors.request.use((config) => {
   const token = localStorage.getItem('access_token')
   if (token) {
@@ -42,7 +42,7 @@ function App() {
     const token = localStorage.getItem('access_token')
     if (token) {
       try {
-        const response = await axios.get('/auth/users/me/')
+        const response = await axios.get('/api/auth/users/me/')
         setUser(response.data)
       } catch (error) {
         localStorage.removeItem('access_token')
@@ -53,7 +53,7 @@ function App() {
 
   const handleLogin = async (username, password) => {
     try {
-      const response = await axios.post('/auth/token/', { username, password })
+      const response = await axios.post('/api/auth/token/', { username, password })
       localStorage.setItem('access_token', response.data.access)
       localStorage.setItem('refresh_token', response.data.refresh)
       await checkAuth()
@@ -64,7 +64,7 @@ function App() {
 
   const handleRegister = async (username, email, password, passwordConfirm) => {
     try {
-      const response = await axios.post('/auth/users/register/', {
+      const response = await axios.post('/api/auth/users/register/', {
         username,
         email,
         password,
@@ -76,7 +76,7 @@ function App() {
       await checkAuth()
       // Create a default workspace for new user
       try {
-        await axios.post('/auth/workspaces/', {
+        await axios.post('/api/auth/workspaces/', {
           name: 'My Workspace',
           description: 'Default workspace'
         })
@@ -96,7 +96,7 @@ function App() {
 
   const loadWorkspaces = async () => {
     try {
-      const response = await axios.get('/auth/workspaces/')
+      const response = await axios.get('/api/auth/workspaces/')
       setWorkspaces(response.data.results || response.data)
       if (response.data.results?.length > 0 || response.data?.length > 0) {
         setSelectedWorkspace(response.data.results?.[0] || response.data[0])
@@ -167,7 +167,7 @@ function App() {
               className="btn-create-workspace"
               onClick={async () => {
                 try {
-                  const response = await axios.post('/auth/workspaces/', {
+                  const response = await axios.post('/api/auth/workspaces/', {
                     name: 'New Workspace',
                     description: ''
                   })
@@ -469,7 +469,14 @@ function QueryInterface({ workspaceId }) {
       })
       setResult(response.data)
     } catch (error) {
-      setError('Query failed: ' + (error.response?.data?.error || error.message))
+      const errorMsg = error.response?.data?.error || error.message
+      if (error.response?.status === 404 && errorMsg.includes('No relevant documents')) {
+        setError('Query failed: No relevant documents found. Documents may still be processing. Please wait a few minutes and try again.')
+      } else if (errorMsg.includes('API key not configured') || errorMsg.includes('OpenAI API key')) {
+        setError('Query failed: LLM API key not configured. Please configure OPENAI_API_KEY or ANTHROPIC_API_KEY in your environment variables to generate answers.')
+      } else {
+        setError('Query failed: ' + errorMsg)
+      }
     } finally {
       setLoading(false)
     }
@@ -609,10 +616,24 @@ function ChatInterface({ workspaceId }) {
               <strong>{msg.role === 'user' ? 'You' : '🤖 Assistant'}:</strong>
               <p>{msg.content}</p>
               {msg.citations && msg.citations.length > 0 && (
-                <div className="citations">
-                  <strong>Sources:</strong> {msg.citations.map((cite, i) => (
-                    <span key={i} style={{ marginLeft: '8px' }}>{cite.document_title}</span>
-                  )).join(', ')}
+                <div className="citations" style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: '#64748b' }}>
+                  <strong style={{ color: '#334155' }}>Sources:</strong>
+                  <ul style={{ marginTop: '0.5rem', marginLeft: '1.5rem', listStyle: 'disc' }}>
+                    {msg.citations.map((cite, i) => {
+                      const title = cite?.document_title || cite?.title || 'Unknown Document'
+                      const page = cite?.page_number ? ` (Page ${cite.page_number})` : ''
+                      return (
+                        <li key={i} style={{ marginBottom: '0.25rem' }}>
+                          <strong>{title}</strong>{page}
+                          {cite?.snippet && (
+                            <div style={{ marginTop: '0.25rem', fontSize: '0.8125rem', color: '#94a3b8', fontStyle: 'italic' }}>
+                              "{cite.snippet.substring(0, 150)}..."
+                            </div>
+                          )}
+                        </li>
+                      )
+                    })}
+                  </ul>
                 </div>
               )}
             </div>
