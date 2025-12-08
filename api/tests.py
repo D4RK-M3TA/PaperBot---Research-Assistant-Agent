@@ -149,3 +149,5 @@ class AuthenticationTestCase(TestCase):
         response = self.client.get('/api/documents/')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
+
+

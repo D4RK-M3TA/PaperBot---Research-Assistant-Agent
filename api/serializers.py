@@ -65,3 +65,5 @@ class SummaryResponseSerializer(serializers.Serializer):
     citations = CitationSerializer(many=True)
     document_ids = serializers.ListField(child=serializers.IntegerField())
 
+
+
