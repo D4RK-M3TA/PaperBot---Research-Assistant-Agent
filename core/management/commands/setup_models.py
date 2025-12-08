@@ -88,3 +88,5 @@ class Command(BaseCommand):
             self.style.SUCCESS('Model setup completed successfully!')
         )
 
+
+
