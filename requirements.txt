@@ -1,3 +1,7 @@
+# CRITICAL: Install numpy first with strict version constraint
+# numpy must be < 2.0 for torch 2.1.2 compatibility
+numpy==1.26.4
+
 # Django & DRF
 Django==4.2.7
 djangorestframework==3.14.0
@@ -21,7 +25,6 @@ pypdf==3.17.0
 # Vector DB & Embeddings
 faiss-cpu==1.13.1
 sentence-transformers==2.2.2
-numpy==1.26.4
 
 # LLM
 openai==1.6.1
