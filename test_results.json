@@ -1,0 +1,17 @@
+{
+  "passed": [
+    "\u2705 Backend Server: Backend is running",
+    "\u2705 User Login: User 'admin' logged in successfully",
+    "\u2705 Get Current User: Retrieved user: admin",
+    "\u2705 List Workspaces: Found 3 workspace(s)",
+    "\u2705 Create Workspace: Workspace 'Test Workspace 2' created (ID: 4)",
+    "\u2705 Upload Document: Document uploaded (ID: 3, Status: uploaded)",
+    "\u2705 List Documents: Found 3 document(s)"
+  ],
+  "failed": [
+    "\u274c Query: ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+    "\u274c Create Chat Session: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /api/chat/ (Caused by NewConnectionError(\"HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [Errno 111] Connection refused\"))",
+    "\u274c Summarize: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /api/summarize/ (Caused by NewConnectionError(\"HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [Errno 111] Connection refused\"))"
+  ],
+  "warnings": []
+}
