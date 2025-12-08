@@ -22,3 +22,5 @@ RUN mkdir -p media vector_db staticfiles
 # Run migrations and collect static files (will be done in docker-compose command)
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
 
+
+
