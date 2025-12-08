@@ -108,12 +108,22 @@ class ChatMessageSerializer(serializers.ModelSerializer):
 class ChatSessionSerializer(serializers.ModelSerializer):
     messages = ChatMessageSerializer(many=True, read_only=True)
     workspace_name = serializers.CharField(source='workspace.name', read_only=True)
+    workspace_id = serializers.IntegerField(write_only=True, required=False)
 
     class Meta:
         model = ChatSession
-        fields = ['id', 'workspace', 'workspace_name', 'title', 'messages',
+        fields = ['id', 'workspace', 'workspace_id', 'workspace_name', 'title', 'messages',
                   'created_at', 'updated_at']
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'workspace', 'created_at', 'updated_at']
+    
+    def validate(self, attrs):
+        # workspace_id is handled in perform_create, remove it from attrs to avoid validation error
+        # It's write_only so it won't be validated against the model field
+        if 'workspace_id' in attrs:
+            attrs.pop('workspace_id')
+        return attrs
+
+
 
 
 
