@@ -5,14 +5,14 @@ This guide provides the exact configuration values needed to deploy PaperBot on 
 ## 1. Root Directory (Optional)
 **Leave this field BLANK** - Your Django project is at the repository root.
 
-**Note**: The project includes a `runtime.txt` file that specifies Python 3.11.9. Render will automatically detect and use this version.
+**Note**: The project includes a `.python-version` file that specifies Python 3.11. Render will automatically detect and use Python 3.11 (latest patch version).
 
 ## 2. Build Command
 ```
 pip install -r requirements.txt
 ```
 
-**Note**: Gunicorn is now included in requirements.txt, so no need to install separately.
+**Important**: Make sure your Render dashboard build command is exactly this (remove any `&& pip install gunicorn` if present, as gunicorn is now in requirements.txt).
 
 ## 3. Start Command
 ```
@@ -142,6 +142,9 @@ python manage.py createsuperuser
 
 ## Troubleshooting
 
+- **Python version wrong**: Ensure `.python-version` file exists in root with `3.11`. Render will use Python 3.11 automatically.
+- **Build fails with numpy/faiss errors**: This usually means Python 3.13 is being used. Check that `.python-version` file exists and contains `3.11`.
+- **Build command error**: Make sure your build command in Render dashboard is exactly `pip install -r requirements.txt` (no `&& pip install gunicorn` needed).
 - **Build fails**: Check that all dependencies in requirements.txt are compatible
 - **App crashes**: Check Render logs for errors, verify all environment variables are set
 - **Database connection fails**: Verify DB_* environment variables match your PostgreSQL service
