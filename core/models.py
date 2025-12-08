@@ -238,3 +238,5 @@ class AuditLog(models.Model):
     def __str__(self):
         return f"{self.action} by {self.user} at {self.created_at}"
 
+
+
