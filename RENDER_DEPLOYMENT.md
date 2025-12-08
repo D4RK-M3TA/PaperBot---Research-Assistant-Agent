@@ -36,14 +36,32 @@ ALLOWED_HOSTS=<your-render-app-url>.onrender.com
 ```
 
 ### Required - Database (PostgreSQL)
-You'll need to create a PostgreSQL database service on Render first, then use its connection details:
+**CRITICAL**: You MUST create a PostgreSQL database service on Render first, then set these environment variables.
+
+**Steps:**
+1. In Render dashboard, create a new **PostgreSQL** service
+2. After creation, go to the PostgreSQL service's "Info" tab
+3. Copy the connection details. You'll see fields like:
+   - **Internal Database URL** (or connection string)
+   - **Hostname** (NOT localhost!)
+   - **Database Name**
+   - **Username**
+   - **Password**
+   - **Port** (usually 5432)
+
+**Set these environment variables in your Web Service:**
 ```
-DB_NAME=<from-render-postgres-service>
-DB_USER=<from-render-postgres-service>
-DB_PASSWORD=<from-render-postgres-service>
-DB_HOST=<from-render-postgres-service>
+DB_NAME=<database-name-from-render>
+DB_USER=<username-from-render>
+DB_PASSWORD=<password-from-render>
+DB_HOST=<hostname-from-render>  # IMPORTANT: This is NOT localhost!
 DB_PORT=5432
 ```
+
+**⚠️ IMPORTANT**: 
+- `DB_HOST` must be the hostname provided by Render (e.g., `dpg-xxxxx-a.oregon-postgres.render.com`)
+- DO NOT use `localhost` or `127.0.0.1` for `DB_HOST` - this will cause connection errors!
+- The hostname is different for Internal vs External connections - use the **Internal** hostname for services in the same region
 
 ### Required - Redis (for Celery)
 You'll need to create a Redis service on Render first, then use its connection details:
@@ -91,8 +109,15 @@ RATE_LIMIT_GENERATION=100
 
 ### Step 1: Create PostgreSQL Database
 1. In Render dashboard, create a new **PostgreSQL** service
-2. Copy the connection details (Internal Database URL)
-3. Use these values for the `DB_*` environment variables
+2. After creation, go to the PostgreSQL service's "Info" tab
+3. Copy the connection details:
+   - **Hostname** (use the Internal hostname, not External)
+   - **Database Name**
+   - **Username**
+   - **Password**
+   - **Port** (usually 5432)
+4. Set these as environment variables in your Web Service (see section 4 above)
+5. **VERIFY**: Make sure `DB_HOST` is NOT set to `localhost` - it must be the Render PostgreSQL hostname!
 
 ### Step 2: Create Redis Service
 1. In Render dashboard, create a new **Redis** service
