@@ -201,14 +201,14 @@ def query(request):
         embedding_service = EmbeddingService()
         query_embedding = embedding_service.create_embedding(query_text)
         
-            # Search similar chunks
-            similar_chunks = embedding_service.search_similar_chunks(
-                query_embedding,
-                top_k=top_k,
-                workspace_id=workspace_id
-            )
-            
-            chunks = [chunk for chunk, _ in similar_chunks]
+        # Search similar chunks
+        similar_chunks = embedding_service.search_similar_chunks(
+            query_embedding,
+            top_k=top_k,
+            workspace_id=workspace_id
+        )
+        
+        chunks = [chunk for chunk, _ in similar_chunks]
         
         if not chunks:
             return Response(
