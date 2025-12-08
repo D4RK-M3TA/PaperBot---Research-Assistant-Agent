@@ -227,7 +227,8 @@ class LLMService:
         """Generate answer using LLM with RAG context."""
         model = cls.get_active_generation_model()
         if not model:
-            raise Exception("No active generation model found")
+            # Fallback: return chunks as answer if no model configured
+            return LLMService._generate_fallback_answer(query, context_chunks)
         
         # Build context from chunks
         context_text = "\n\n".join([
@@ -239,17 +240,22 @@ class LLMService:
         prompt = cls._build_qa_prompt(query, context_text, conversation_history)
         
         # Call LLM
-        if model.provider == 'openai':
-            response = cls._call_openai(model.model_id, prompt)
-        elif model.provider == 'anthropic':
-            response = cls._call_anthropic(model.model_id, prompt)
-        else:
-            raise Exception(f"Unsupported LLM provider: {model.provider}")
-        
-        # Extract answer and citations
-        answer, citations = cls._parse_response(response, context_chunks)
-        
-        return answer, citations
+        try:
+            if model.provider == 'openai':
+                response = cls._call_openai(model.model_id, prompt)
+            elif model.provider == 'anthropic':
+                response = cls._call_anthropic(model.model_id, prompt)
+            else:
+                raise Exception(f"Unsupported LLM provider: {model.provider}")
+            
+            # Extract answer and citations
+            answer, citations = cls._parse_response(response, context_chunks)
+            return answer, citations
+        except Exception as e:
+            # If LLM call fails (e.g., no API key), fallback to chunk-based answer
+            if "API key" in str(e) or "not configured" in str(e):
+                return LLMService._generate_fallback_answer(query, context_chunks)
+            raise
     
     @staticmethod
     def _build_qa_prompt(query: str, context: str, history: Optional[List[Dict]] = None) -> str:
@@ -321,6 +327,59 @@ Answer:"""
         return response.content[0].text
     
     @staticmethod
+    def _generate_fallback_answer(query: str, chunks: List[Chunk]) -> Tuple[str, List[Dict]]:
+        """Generate answer from chunks when LLM is not available."""
+        if not chunks:
+            return "No relevant information found in the documents.", []
+        
+        # Build answer from top chunks - more concise and focused
+        answer_parts = []
+        citations = []
+        
+        # Group chunks by document
+        doc_chunks = {}
+        for chunk in chunks[:5]:  # Use top 5 chunks
+            doc_id = chunk.document.id
+            if doc_id not in doc_chunks:
+                doc_chunks[doc_id] = []
+            doc_chunks[doc_id].append(chunk)
+        
+        # Build answer focusing on most relevant content
+        for doc_id, doc_chunk_list in doc_chunks.items():
+            chunk = doc_chunk_list[0]
+            doc_title = chunk.document.title
+            
+            # Combine text from multiple chunks of same document
+            combined_text = " ".join([c.text for c in doc_chunk_list])
+            # Extract most relevant snippet (first 400 chars)
+            snippet = combined_text[:400].strip()
+            if len(combined_text) > 400:
+                # Try to end at sentence boundary
+                last_period = snippet.rfind('.')
+                if last_period > 200:
+                    snippet = snippet[:last_period + 1]
+                else:
+                    snippet += "..."
+            
+            answer_parts.append(f"**{doc_title}**:\n{snippet}")
+            
+            # Add citation for this document
+            citations.append({
+                'document_id': chunk.document.id,
+                'document_title': doc_title,
+                'chunk_id': chunk.id,
+                'page_number': chunk.page_number,
+                'snippet': chunk.text[:200] if chunk.text else '',
+                'score': None
+            })
+        
+        # Build concise answer
+        answer = "Based on the relevant sections from your documents:\n\n" + "\n\n".join(answer_parts)
+        answer += "\n\n*Note: This response uses retrieved document sections. Configure OPENAI_API_KEY or ANTHROPIC_API_KEY for AI-generated summaries.*"
+        
+        return answer, citations
+    
+    @staticmethod
     def _parse_response(response: str, chunks: List[Chunk]) -> Tuple[str, List[Dict]]:
         """Parse LLM response and extract citations."""
         citations = []
@@ -374,21 +433,27 @@ Documents:
 Summary:"""
         
         # Call LLM
-        if model.provider == 'openai':
-            response = cls._call_openai(model.model_id, prompt)
-        elif model.provider == 'anthropic':
-            response = cls._call_anthropic(model.model_id, prompt)
-        else:
-            raise Exception(f"Unsupported LLM provider: {model.provider}")
-        
-        # Extract summary and related work
-        if summary_type == 'related_work':
-            parts = response.split('Related Work:', 1)
-            summary = parts[0].strip()
-            related_work = parts[1].strip() if len(parts) > 1 else ""
-        else:
-            summary = response
-            related_work = ""
+        try:
+            if model.provider == 'openai':
+                response = cls._call_openai(model.model_id, prompt)
+            elif model.provider == 'anthropic':
+                response = cls._call_anthropic(model.model_id, prompt)
+            else:
+                raise Exception(f"Unsupported LLM provider: {model.provider}")
+            
+            # Extract summary and related work
+            if summary_type == 'related_work':
+                parts = response.split('Related Work:', 1)
+                summary = parts[0].strip()
+                related_work = parts[1].strip() if len(parts) > 1 else ""
+            else:
+                summary = response
+                related_work = ""
+        except Exception as e:
+            # If LLM call fails (e.g., no API key), fallback to chunk-based summary
+            if "API key" in str(e) or "not configured" in str(e):
+                return LLMService._generate_fallback_summary(document_chunks, summary_type)
+            raise
         
         # Build citations
         citations = []
@@ -404,6 +469,148 @@ Summary:"""
                     'score': None
                 })
                 seen_docs.add(chunk.document.id)
+        
+        return summary, related_work, citations
+    
+    @staticmethod
+    def _generate_fallback_summary(chunks: List[Chunk], summary_type: str = 'short') -> Tuple[str, str, List[Dict]]:
+        """Generate summary from chunks when LLM is not available."""
+        if not chunks:
+            return "No documents available for summarization.", "", []
+        
+        # Group chunks by document
+        doc_chunks = {}
+        for chunk in chunks:
+            doc_id = chunk.document.id
+            if doc_id not in doc_chunks:
+                doc_chunks[doc_id] = []
+            doc_chunks[doc_id].append(chunk)
+        
+        citations = []
+        
+        # Build summary (general overview - use beginning/intro chunks)
+        summary_parts = []
+        summary_citations = []
+        seen_docs_summary = set()
+        
+        for doc_id, doc_chunk_list in doc_chunks.items():
+            chunk = doc_chunk_list[0]
+            if doc_id not in seen_docs_summary:
+                doc_title = chunk.document.title
+                # For summary, use first chunks (introduction/overview)
+                intro_chunks = doc_chunk_list[:2]  # First 2 chunks typically contain intro
+                combined_text = " ".join([c.text for c in intro_chunks])
+                snippet = combined_text[:350].strip()
+                if len(combined_text) > 350:
+                    last_period = snippet.rfind('.')
+                    if last_period > 150:
+                        snippet = snippet[:last_period + 1]
+                    else:
+                        snippet += "..."
+                
+                summary_parts.append(f"**{doc_title}**: {snippet}")
+                
+                summary_citations.append({
+                    'document_id': chunk.document.id,
+                    'document_title': doc_title,
+                    'chunk_id': chunk.id,
+                    'page_number': chunk.page_number,
+                    'snippet': chunk.text[:200] if chunk.text else '',
+                    'score': None
+                })
+                seen_docs_summary.add(doc_id)
+        
+        summary = "\n\n".join(summary_parts)
+        summary += "\n\n*Note: This is a fallback summary using document excerpts. Configure OPENAI_API_KEY or ANTHROPIC_API_KEY for AI-generated summaries.*"
+        
+        # Use summary citations as base
+        citations = summary_citations.copy()
+        
+        # Build related work section (if requested)
+        related_work = ""
+        if summary_type == 'related_work':
+            related_work_parts = []
+            seen_docs_rw = set()
+            
+            # For related work, focus on methodology, approaches, and comparative content
+            # Priority keywords for related work
+            methodology_keywords = ['method', 'methodology', 'approach', 'framework', 'model', 'technique', 'procedure', 'process', 'design', 'implementation']
+            comparative_keywords = ['previous', 'existing', 'literature', 'study', 'studies', 'research', 'compared', 'similar', 'different', 'other', 'prior', 'earlier']
+            analysis_keywords = ['analysis', 'analyze', 'evaluate', 'examine', 'investigate', 'discuss', 'coding', 'theme', 'data']
+            
+            for doc_id, doc_chunk_list in doc_chunks.items():
+                chunk = doc_chunk_list[0]
+                if doc_id not in seen_docs_rw:
+                    doc_title = chunk.document.title
+                    
+                    # Find chunks that mention methodology or comparative work (higher priority)
+                    methodology_chunks = []
+                    comparative_chunks = []
+                    analysis_chunks = []
+                    
+                    # Skip first 2 chunks (used in summary) to get different content
+                    search_chunks = doc_chunk_list[2:] if len(doc_chunk_list) > 2 else doc_chunk_list
+                    
+                    for c in search_chunks:
+                        text_lower = c.text.lower()
+                        if any(keyword in text_lower for keyword in methodology_keywords):
+                            methodology_chunks.append(c)
+                        elif any(keyword in text_lower for keyword in comparative_keywords):
+                            comparative_chunks.append(c)
+                        elif any(keyword in text_lower for keyword in analysis_keywords):
+                            analysis_chunks.append(c)
+                    
+                    # Prioritize: methodology > comparative > analysis > middle/later chunks
+                    if methodology_chunks:
+                        use_chunks = methodology_chunks[:2]
+                    elif comparative_chunks:
+                        use_chunks = comparative_chunks[:2]
+                    elif analysis_chunks:
+                        use_chunks = analysis_chunks[:2]
+                    else:
+                        # Use middle-to-later chunks (skip intro, get methodology/content)
+                        if len(doc_chunk_list) > 4:
+                            start_idx = len(doc_chunk_list) // 3  # Start from 1/3 through
+                            use_chunks = doc_chunk_list[start_idx:start_idx+2]
+                        elif len(doc_chunk_list) > 2:
+                            use_chunks = doc_chunk_list[2:4]  # Skip first 2
+                        else:
+                            use_chunks = doc_chunk_list
+                    
+                    combined_text = " ".join([c.text for c in use_chunks])
+                    snippet = combined_text[:550].strip()
+                    if len(combined_text) > 550:
+                        last_period = snippet.rfind('.')
+                        if last_period > 250:
+                            snippet = snippet[:last_period + 1]
+                        else:
+                            snippet += "..."
+                    
+                    # Format with citation-style reference
+                    related_work_parts.append(f"**{doc_title}** [Document: {doc_title}]:\n{snippet}")
+                    seen_docs_rw.add(doc_id)
+            
+            if related_work_parts:
+                related_work = "**Related Work and Methodology:**\n\nThis section presents methodology, analytical approaches, and related research from the documents:\n\n" + "\n\n".join(related_work_parts)
+            else:
+                # Fallback: use different chunks than summary
+                related_work_parts = []
+                for doc_id, doc_chunk_list in doc_chunks.items():
+                    if len(doc_chunk_list) > 2:
+                        # Use chunks 3-5 (different from summary which uses 1-2)
+                        use_chunks = doc_chunk_list[2:min(5, len(doc_chunk_list))]
+                        combined_text = " ".join([c.text for c in use_chunks])
+                        snippet = combined_text[:500].strip()
+                        if len(combined_text) > 500:
+                            last_period = snippet.rfind('.')
+                            if last_period > 200:
+                                snippet = snippet[:last_period + 1]
+                            else:
+                                snippet += "..."
+                        related_work_parts.append(f"**{doc_chunk_list[0].document.title}** [Document: {doc_chunk_list[0].document.title}]:\n{snippet}")
+                related_work = "**Related Work and Methodology:**\n\n" + "\n\n".join(related_work_parts) if related_work_parts else "No methodology or related work sections found in the selected documents."
+            
+            related_work += "\n\n*Note: This related work section uses retrieved document excerpts focusing on methodology and comparative analysis. Configure OPENAI_API_KEY or ANTHROPIC_API_KEY for AI-generated related work synthesis.*"
         
         return summary, related_work, citations
 
