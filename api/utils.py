@@ -8,12 +8,36 @@ from pathlib import Path
 from typing import List, Dict, Tuple, Optional
 from pdfminer.high_level import extract_text
 from pdfminer.layout import LAParams
-from sentence_transformers import SentenceTransformer
-import faiss
+try:
+    from sentence_transformers import SentenceTransformer
+    SENTENCE_TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    SENTENCE_TRANSFORMERS_AVAILABLE = False
+    SentenceTransformer = None
+
+try:
+    import faiss
+    FAISS_AVAILABLE = True
+except ImportError:
+    FAISS_AVAILABLE = False
+    faiss = None
+
 from django.conf import settings
 from core.models import EmbeddingModel, GenerationModel, Chunk, ChunkEmbedding
-import openai
-from anthropic import Anthropic
+
+try:
+    import openai
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
+    openai = None
+
+try:
+    from anthropic import Anthropic
+    ANTHROPIC_AVAILABLE = True
+except ImportError:
+    ANTHROPIC_AVAILABLE = False
+    Anthropic = None
 
 
 class PDFProcessor:
@@ -95,6 +119,8 @@ class EmbeddingService:
     @classmethod
     def get_model(cls):
         """Get or load embedding model."""
+        if not SENTENCE_TRANSFORMERS_AVAILABLE:
+            raise Exception("sentence-transformers not installed. Install with: pip install sentence-transformers")
         if cls._model is None:
             model_name = settings.EMBEDDING_MODEL
             cls._model = SentenceTransformer(model_name)
@@ -115,6 +141,8 @@ class EmbeddingService:
     @classmethod
     def get_or_create_index(cls, dimension: int):
         """Get or create FAISS index."""
+        if not FAISS_AVAILABLE:
+            raise Exception("faiss not installed. Install with: pip install faiss-cpu")
         if cls._index is None:
             index_path = Path(settings.VECTOR_DB_PATH) / 'faiss.index'
             if index_path.exists():
