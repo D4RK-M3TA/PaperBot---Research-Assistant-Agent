@@ -78,3 +78,5 @@ class AuditLogAdmin(admin.ModelAdmin):
     search_fields = ['user__username']
     readonly_fields = ['created_at']
 
+
+
