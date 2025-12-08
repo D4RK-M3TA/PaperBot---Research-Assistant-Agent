@@ -2,6 +2,16 @@
 
 A backend-first system (Django + DRF) that ingests PDFs, extracts text, chunks & embeds content, stores embeddings in a vector DB, supports RAG-based Q/A and multi-document summarization with citation provenance.
 
+## 📸 Screenshots
+
+### Dashboard & Main Interface
+![Dashboard](docs/images/dashboard.png)
+*Main dashboard showing workspaces, document management, and navigation tabs*
+
+### Features Overview
+![Features](docs/images/features.png)
+*Query interface, chat functionality, and document summarization features*
+
 ## Features
 
 - **PDF Ingestion Pipeline**: Upload → OCR/text extraction → clean → chunk → embed → index (async via Celery)
