@@ -21,7 +21,7 @@ pypdf==3.17.0
 # Vector DB & Embeddings
 faiss-cpu==1.13.1
 sentence-transformers==2.2.2
-numpy>=1.25.0,<3.0
+numpy==1.25.2
 
 # LLM
 openai==1.6.1
