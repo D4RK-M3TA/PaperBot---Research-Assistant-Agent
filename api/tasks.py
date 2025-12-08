@@ -45,6 +45,9 @@ def process_document(self, document_id: int):
         pipeline_run.save()
         
         # Stage 2: Chunk text
+        # Delete existing chunks if any (for reprocessing)
+        Chunk.objects.filter(document=document).delete()
+        
         chunks_data = PDFProcessor.chunk_text(text)
         chunks = []
         for chunk_data in chunks_data:
