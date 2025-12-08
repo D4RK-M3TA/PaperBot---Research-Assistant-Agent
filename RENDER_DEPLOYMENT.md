@@ -9,11 +9,11 @@ This guide provides the exact configuration values needed to deploy PaperBot on 
 
 ## 2. Build Command
 ```
-pip install "numpy==1.26.4" --no-deps && pip install -r requirements.txt
+pip install "numpy==1.26.4" && pip install -r requirements.txt
 ```
 
 **Important**: 
-- We install numpy first with `--no-deps` to prevent pip from upgrading it to numpy 2.x
+- We install numpy first to ensure it's installed before other packages that might pull in numpy 2.x
 - This ensures torch 2.1.2 compatibility (torch requires numpy < 2.0)
 - Make sure your Render dashboard build command matches this exactly
 
