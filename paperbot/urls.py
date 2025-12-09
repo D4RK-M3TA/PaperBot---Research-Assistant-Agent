@@ -11,10 +11,16 @@ import os
 
 urlpatterns = [
     path('', root, name='root'),
+    # Admin is protected by Django's authentication - only staff/superuser can access
     path('admin/', admin.site.urls),
     path('api/auth/', include('core.urls')),
     path('api/', include('api.urls')),
 ]
+
+# Customize admin site headers for security
+admin.site.site_header = "PaperBot Administration"
+admin.site.site_title = "PaperBot Admin"
+admin.site.index_title = "Welcome to PaperBot Administration"
 
 # Serve frontend static assets (JS, CSS from Vite build)
 if settings.DEBUG:

@@ -9,6 +9,11 @@ This guide provides the exact configuration values needed to deploy PaperBot on 
 
 ## 2. Build Command
 ```
+bash build.sh
+```
+
+**OR manually:**
+```
 pip install "numpy==1.26.4" && pip install -r requirements.txt && cd frontend && npm install && npm run build && cd ..
 ```
 
@@ -16,7 +21,8 @@ pip install "numpy==1.26.4" && pip install -r requirements.txt && cd frontend &&
 - We install numpy first to ensure it's installed before other packages that might pull in numpy 2.x
 - This ensures torch 2.1.2 compatibility (torch requires numpy < 2.0)
 - The frontend is built using Vite, which creates static files in `frontend/dist/`
-- Make sure your Render dashboard build command matches this exactly
+- **CRITICAL**: Make sure your Render dashboard build command includes the frontend build step!
+- Render should have Node.js available automatically, but if build fails, check Node.js version in Render settings
 
 ## 3. Start Command
 ```
@@ -149,6 +155,8 @@ python manage.py createsuperuser
 ## 6. Important Notes
 
 1. **Static Files**: The `collectstatic` command in the start command will collect static files to `staticfiles/` directory. Make sure your Django settings are configured correctly.
+
+2. **Frontend**: The frontend is built during the build process and served by Django at the root URL (`/`). The React app will be available at your main domain.
 
 2. **Media Files**: By default, media files are stored locally. For production, consider using AWS S3 by configuring the AWS environment variables.
 
