@@ -11,7 +11,7 @@ import os
 
 urlpatterns = [
     path('health/', views.health_check, name='health'),
-    path('', root, name='root'),
+    path('', views.root, name='root'),
     # Admin is protected by Django's authentication - only staff/superuser can access
     path('admin/', admin.site.urls),
     path('api/auth/', include('core.urls')),
