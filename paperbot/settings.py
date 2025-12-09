@@ -109,6 +109,13 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+# Frontend static files (Vite build output)
+FRONTEND_DIST = BASE_DIR / 'frontend' / 'dist'
+STATICFILES_DIRS = [
+    BASE_DIR / 'staticfiles',
+    FRONTEND_DIST / 'assets',  # Vite builds assets here
+]
+
 # Media files
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'

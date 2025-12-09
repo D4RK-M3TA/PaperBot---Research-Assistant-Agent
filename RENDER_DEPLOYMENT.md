@@ -9,12 +9,13 @@ This guide provides the exact configuration values needed to deploy PaperBot on 
 
 ## 2. Build Command
 ```
-pip install "numpy==1.26.4" && pip install -r requirements.txt
+pip install "numpy==1.26.4" && pip install -r requirements.txt && cd frontend && npm install && npm run build && cd ..
 ```
 
 **Important**: 
 - We install numpy first to ensure it's installed before other packages that might pull in numpy 2.x
 - This ensures torch 2.1.2 compatibility (torch requires numpy < 2.0)
+- The frontend is built using Vite, which creates static files in `frontend/dist/`
 - Make sure your Render dashboard build command matches this exactly
 
 ## 3. Start Command
@@ -172,8 +173,13 @@ python manage.py createsuperuser
 
 - **Python version wrong**: Ensure `.python-version` file exists in root with `3.11`. Render will use Python 3.11 automatically.
 - **Build fails with numpy/faiss errors**: This usually means Python 3.13 is being used. Check that `.python-version` file exists and contains `3.11`.
-- **Build command error**: Make sure your build command in Render dashboard is exactly `pip install -r requirements.txt` (no `&& pip install gunicorn` needed).
+- **Build command error**: Make sure your build command in Render dashboard is exactly `pip install "numpy==1.26.4" && pip install -r requirements.txt`.
 - **Build fails**: Check that all dependencies in requirements.txt are compatible
 - **App crashes**: Check Render logs for errors, verify all environment variables are set
-- **Database connection fails**: Verify DB_* environment variables match your PostgreSQL service
+- **Database connection fails with "Connection refused"**: 
+  - ⚠️ **MOST COMMON ISSUE**: Check that `DB_HOST` environment variable is set to the Render PostgreSQL hostname (NOT `localhost` or `127.0.0.1`)
+  - Verify all `DB_*` environment variables are set correctly
+  - Make sure you're using the **Internal** hostname from your PostgreSQL service (not External)
+  - Ensure your PostgreSQL service is running and healthy
+  - Check that your Web Service and PostgreSQL service are in the same region
 - **Celery tasks not working**: Ensure Redis is configured and Celery worker service is running
