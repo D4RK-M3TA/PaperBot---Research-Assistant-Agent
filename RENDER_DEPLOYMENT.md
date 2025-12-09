@@ -26,10 +26,14 @@ pip install "numpy==1.26.4" && pip install -r requirements.txt && cd frontend &&
 
 ## 3. Start Command
 ```
-python manage.py migrate && python manage.py collectstatic --noinput && gunicorn paperbot.wsgi:application --bind 0.0.0.0:$PORT
+python manage.py migrate && python manage.py collectstatic --noinput && gunicorn paperbot.wsgi:application -c gunicorn_config.py
 ```
 
-**Important**: Render automatically sets the `$PORT` environment variable, so we use `$PORT` instead of hardcoding port 8000.
+**Important**: 
+- Uses a custom gunicorn config file optimized for memory-constrained environments
+- Uses only 1 worker to reduce memory usage (important for Render's free tier)
+- Increased timeout to handle model loading
+- Render automatically sets the `$PORT` environment variable in the config file
 
 ## 4. Environment Variables
 
