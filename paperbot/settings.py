@@ -112,9 +112,8 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 # Frontend static files (Vite build output)
 FRONTEND_DIST = BASE_DIR / 'frontend' / 'dist'
 STATICFILES_DIRS = [
-    BASE_DIR / 'staticfiles',
     FRONTEND_DIST / 'assets',  # Vite builds assets here
-]
+] if (FRONTEND_DIST / 'assets').exists() else []
 
 # Media files
 MEDIA_URL = '/media/'

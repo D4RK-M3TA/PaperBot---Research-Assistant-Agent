@@ -23,15 +23,24 @@ admin.site.site_title = "PaperBot Admin"
 admin.site.index_title = "Welcome to PaperBot Administration"
 
 # Serve frontend static assets (JS, CSS from Vite build)
+frontend_dist = os.path.join(settings.BASE_DIR, 'frontend', 'dist')
+frontend_assets = os.path.join(frontend_dist, 'assets')
+
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-else:
-    # In production, serve frontend assets
-    frontend_dist = os.path.join(settings.BASE_DIR, 'frontend', 'dist')
-    if os.path.exists(frontend_dist):
+    # In development, serve frontend assets directly
+    if os.path.exists(frontend_assets):
         urlpatterns += [
             re_path(r'^assets/(?P<path>.*)$', serve, {
-                'document_root': os.path.join(frontend_dist, 'assets'),
+                'document_root': frontend_assets,
+            }),
+        ]
+else:
+    # In production, serve frontend assets
+    if os.path.exists(frontend_assets):
+        urlpatterns += [
+            re_path(r'^assets/(?P<path>.*)$', serve, {
+                'document_root': frontend_assets,
             }),
         ]
 
