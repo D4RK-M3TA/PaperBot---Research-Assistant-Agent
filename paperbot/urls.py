@@ -6,10 +6,11 @@ from django.urls import path, include, re_path
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.static import serve
-from .views import root
+from . import views
 import os
 
 urlpatterns = [
+    path('health/', views.health_check, name='health'),
     path('', root, name='root'),
     # Admin is protected by Django's authentication - only staff/superuser can access
     path('admin/', admin.site.urls),

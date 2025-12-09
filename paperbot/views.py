@@ -1,10 +1,18 @@
 """
 Root view for PaperBot API.
 """
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.template.loader import render_to_string
 from django.conf import settings
 import os
+
+
+def health_check(request):
+    """
+    Lightweight health check endpoint that doesn't load any models.
+    Used by Render to verify the service is running.
+    """
+    return JsonResponse({'status': 'ok', 'service': 'paperbot'})
 
 
 def root(request):
